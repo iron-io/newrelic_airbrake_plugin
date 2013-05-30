@@ -1,0 +1,12 @@
+newrelic:
+  license: 'New Relic License Key'
+  guid: 'io.iron.airbrake_agent'
+  version: '1'
+
+iron:
+  token: 'Iron.io Token'
+  project_id: 'Iron.io Project ID'
+
+airbrake:
+  account: 'Airbrake.io Account Name'
+  token: 'Airbrake.io Token'

@@ -1,0 +1,10 @@
+runtime 'ruby'
+exec 'airbrake_agent.rb'
+name 'Airbrake Agent (New Relic)'
+
+# uncomment when newrelic-platform gem will be public
+#gemfile 'Gemfile'
+
+gem 'newrelic_platform', '0.0.2'
+gem 'activeresource'
+gem 'iron_cache'
