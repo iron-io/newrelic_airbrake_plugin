@@ -14,30 +14,44 @@ require 'newrelic_platform'
                                   :version => config['newrelic']['version'])
 
 # Configure IronCache
-@cache = IronCache::Client.new(config['iron']).cache('newrelic-parse-agent')
+begin
+  @cache = IronCache::Client.new(config['iron']).cache('newrelic-parse-agent')
+rescue Exception => err
+  abort 'Iron.io credentials are wrong.'
+end
 
 # Airbrake setup
-AB_SITE = "http://#{config['airbrake']['account']}.airbrake.io"
+AB_SITE = "http://#{config['airbrake']['subdomain']}.airbrake.io"
 AB_TOKEN = config['airbrake']['token']
 
-class Airbrake < ActiveResource::Base
-  self.site = AB_SITE
+begin
+  class Airbrake < ActiveResource::Base
+    self.site = AB_SITE
 
-  class << self
-    @@auth_token = AB_TOKEN
+    class << self
+      @@auth_token = AB_TOKEN
 
-    def find(*arguments)
-      arguments = append_auth_token_to_params(*arguments)
-      super(*arguments)
+      def find(*arguments)
+        arguments = append_auth_token_to_params(*arguments)
+        super(*arguments)
+      end
+
+      def append_auth_token_to_params(*arguments)
+        opts = arguments.last.is_a?(Hash) ? arguments.pop : {}
+        opts = opts.has_key?(:params) ? opts : opts.merge(:params => {})
+        opts[:params] = opts[:params].merge(:auth_token => @@auth_token)
+        arguments << opts
+        arguments
+      end
     end
-
-    def append_auth_token_to_params(*arguments)
-      opts = arguments.last.is_a?(Hash) ? arguments.pop : {}
-      opts = opts.has_key?(:params) ? opts : opts.merge(:params => {})
-      opts[:params] = opts[:params].merge(:auth_token => @@auth_token)
-      arguments << opts
-      arguments
-    end
+  end
+rescue Exception => err
+  restore_stderr
+  if err.message.downcase =~ /bad uri/
+    abort "Seems Airbrake's subdomain is wrong."
+  else
+    abort("Error happened while configure Airbrake. " +
+          "Error message: '#{err.message}'.")
   end
 end
 
@@ -47,6 +61,15 @@ class Project < Airbrake; end
 
 
 # Helpers
+def stderr_to_stdout
+  $stderr_backup = $stderr unless $stderr_backup
+  $stderr = $stdout
+end
+
+def restore_stderr
+  $stderr = $stderr_backup if $stderr_backup
+end
+
 def duration(from, to)
   dur = from ? (to - from).to_i : 3600
 
@@ -67,7 +90,12 @@ def processed_at(processed = nil)
 
     @processed_at = Time.at(processed.to_i).utc
   elsif @processed_at.nil?
-    item = @cache.get 'previously_processed_at'
+    item = begin
+             @cache.get 'previously_processed_at'
+           rescue Exception => err
+             restore_stderr
+             abort 'Seems Iron.io Token is wrong.'
+           end
     min_prev_allowed = (up_to - 3600).to_i
 
     at = if item && item.value.to_i > min_prev_allowed
@@ -147,7 +175,7 @@ def process_and_send_results
   up_to # set processing timestamp
   yield results
 
-  component_name = "Airbrake (#{config['airbrake']['account'].capitalize})"
+  component_name = "Airbrake (#{config['airbrake']['subdomain'].capitalize})"
   component = collector.component(component_name)
   results.each do |project, stats|
     stats.each do |env, stat|
@@ -160,8 +188,18 @@ def process_and_send_results
   end
   component.options[:duration] = duration(processed_at, up_to)
 
-  # Submit data to New Relic
-  collector.submit
+  begin
+    # Submit data to New Relic
+    collector.submit
+  rescue Exception => err
+    restore_stderr
+    if err.message.downcase =~ /http 403/
+      abort "Seems New Relic's license key is wrong."
+    else
+      abort("Error happened while sending data to New Relic. " +
+            "Error message: '#{err.message}'.")
+    end
+  end
 
   # update processed_at timestamp in cache
   processed_at(up_to)
@@ -169,13 +207,18 @@ end
 
 
 # Process
-
+stderr_to_stdout
 process_and_send_results do |results|
-  # Total stats
-  results['All Projects'] = by_envs(all_errors)
+  begin
+    # Total stats
+    results['All Projects'] = by_envs(all_errors)
 
-  # Per project stats
-  with_each_project(all_errors) do |prj_name, errs|
-    results[prj_name] = by_envs(errs)
+    # Per project stats
+    with_each_project(all_errors) do |prj_name, errs|
+      results[prj_name] = by_envs(errs)
+    end
+  rescue Exception => err
+    restore_stderr
+    abort "Seems Airbrake's Token or Subdomain is wrong."
   end
 end

@@ -8,5 +8,5 @@ iron:
   project_id: 'Iron.io Project ID'
 
 airbrake:
-  account: 'Airbrake.io Account Name'
+  subdomain: 'Airbrake.io Subdomain (Account Name)'
   token: 'Airbrake.io Token'
