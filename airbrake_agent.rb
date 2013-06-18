@@ -50,7 +50,7 @@ rescue Exception => err
   if err.message.downcase =~ /bad uri/
     abort "Seems Airbrake's subdomain is wrong."
   else
-    abort("Error happened while configure Airbrake. " +
+    abort("Error happened while configuring Airbrake. " +
           "Error message: '#{err.message}'.")
   end
 end
@@ -218,6 +218,7 @@ process_and_send_results do |results|
       results[prj_name] = by_envs(errs)
     end
   rescue Exception => err
+    puts err.message
     restore_stderr
     abort "Seems Airbrake's Token or Subdomain is wrong."
   end
