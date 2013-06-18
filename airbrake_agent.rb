@@ -10,7 +10,7 @@ require 'newrelic_platform'
 # Setup
 # Configure NewRelic client
 @new_relic = NewRelic::Client.new(:license => config['newrelic']['license'],
-                                  :guid => config['newrelic']['guid'],
+                                  :guid => 'io.iron.airbrake_agent',
                                   :version => config['newrelic']['version'])
 
 # Configure IronCache

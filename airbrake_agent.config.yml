@@ -1,12 +1,13 @@
 newrelic:
-  license: 'New Relic License Key'
-  guid: 'io.iron.airbrake_agent'
-  version: '1'
+  license: '' # New Relic license key
+  version: '1' # bump this everytime you upload a changed worker (with custom metrics)
 
+# Iron.io credentials (where you launch your agent)
 iron:
-  token: 'Iron.io Token'
-  project_id: 'Iron.io Project ID'
+  project_id: ''
+  token: ''
 
+# Airbreak configuration
 airbrake:
-  subdomain: 'Airbrake.io Subdomain (Account Name)'
-  token: 'Airbrake.io Token'
+  subdomain: ''
+  token: ''
